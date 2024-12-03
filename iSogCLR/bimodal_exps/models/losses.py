@@ -358,6 +358,9 @@ class VICReg_Loss(nn.Module):
         if self.world_size > 1:
             x = torch.cat(GatherLayer.apply(image_features), dim=0)
             y = torch.cat(GatherLayer.apply(text_features), dim=0)
+        else:
+            x = image_features
+            y = text_features
 
         batch_size = len(x)
 
@@ -668,6 +671,9 @@ class onlineCLR_Loss(nn.Module):
         if self.world_size > 1:
             hidden1 = torch.cat(GatherLayer.apply(image_features), dim=0)
             hidden2 = torch.cat(GatherLayer.apply(text_features), dim=0)
+        else:
+            hidden1 = image_features
+            hidden2 = text_features
 
         batch_size = hidden1.shape[0]
         
