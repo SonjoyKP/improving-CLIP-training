@@ -621,6 +621,7 @@ if __name__ == '__main__':
 
     # optimizer and schedular
     parser.add_argument('--opt', default='adamW')
+    parser.add_argument('--momentum', default=0.9, type=float)
     parser.add_argument('--sched', default='cosine')
     parser.add_argument('--lr', default=2e-4, type=float)
     parser.add_argument('--lr_temp_net', default=1e-6, type=float)
