@@ -583,7 +583,8 @@ def main(args):
                 save_obj = {
                     'model': model_without_ddp.state_dict()
                 }
-                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_'+str(epoch+1)+'.pth'))
+                if(epoch == max_epoch):
+                    torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_'+str(epoch+1)+'.pth'))
                     
         if args.evaluate: 
             break
