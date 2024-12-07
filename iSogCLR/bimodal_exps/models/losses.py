@@ -721,4 +721,60 @@ class onlineCLR_Loss(nn.Module):
         return loss
 
 
+class InfoNCE_Loss(nn.Module):
+    """
+    InfoNCE Loss for contrastive learning.
+    """
+    def __init__(self, world_size=8, temperature=0.07):
+        """
+        Args:
+            world_size: Number of GPUs for distributed training.
+            temperature: Temperature scaling parameter.
+        """
+        super(InfoNCE_Loss, self).__init__()
+        self.world_size = world_size
+        self.temperature = temperature
+
+    def forward(self, anchor_features, positive_features, negative_features=None):
+        """
+        Forward pass for InfoNCE Loss.
+
+        Args:
+            anchor_features: [batch_size, feature_dim], L2-normalized features of the anchor samples.
+            positive_features: [batch_size, feature_dim], L2-normalized features of the positive samples.
+            negative_features: (Optional) [batch_size, num_negatives, feature_dim], 
+                               L2-normalized features of the negative samples.
+
+        Returns:
+            loss: InfoNCE loss.
+        """
+        # Gather features across GPUs if distributed
+        if self.world_size > 1:
+            anchor_features = torch.cat(GatherLayer.apply(anchor_features), dim=0)
+            positive_features = torch.cat(GatherLayer.apply(positive_features), dim=0)
+
+        # Compute similarity scores
+        positive_logits = torch.sum(anchor_features * positive_features, dim=-1, keepdim=True) / self.temperature
+        
+        # Optionally include hard negatives or negatives from the batch
+        if negative_features is not None:
+            batch_size = anchor_features.size(0)
+            negative_logits = torch.einsum('id,jkd->ijk', anchor_features, negative_features) / self.temperature
+        else:
+            # Use all other features in the batch as negatives
+            batch_logits = torch.einsum('id,jd->ij', anchor_features, positive_features) / self.temperature
+            mask = torch.eye(batch_logits.size(0), device=anchor_features.device).bool()
+            negative_logits = batch_logits[~mask].view(batch_logits.size(0), -1)
+
+        # Concatenate positive and negative logits
+        logits = torch.cat([positive_logits, negative_logits], dim=-1)
+
+        # Create targets: positive samples are in the first column
+        targets = torch.zeros(logits.size(0), dtype=torch.long, device=anchor_features.device)
+
+        # Compute cross-entropy loss
+        loss = F.cross_entropy(logits, targets)
+
+        return loss
+
 
